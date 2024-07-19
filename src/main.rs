@@ -1,4 +1,5 @@
-use clap::{Parser};
+use anyhow::Result;
+use clap::Parser;
 
 use please::commands::Commands;
 use please::list::handle_list;
@@ -9,19 +10,21 @@ struct Cli {
     /// Override the default DEV_DIR environmental variable,
     /// which points to a folder with all projects / Git repositories
     #[arg(short, long)]
-    default_var: Option<String>,
+    override_default: Option<String>,
 
     #[command(subcommand)]
     command: Option<Commands>
 }
 
-fn main() {
+fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
         Some(Commands::List { name, path }) =>
-            handle_list(&cli.default_var, name, path),
-        None =>
-            println!("No command given. Use with --help or -h to see available commands and options")
+            handle_list(&cli.override_default, path),
+        None => {
+            println!("No command given. Use with --help or -h to see available commands and options");
+            Ok(())
+        }
     }
 }
