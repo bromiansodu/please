@@ -1,5 +1,4 @@
 pub mod commands;
-pub mod list;
 pub mod directory;
 pub mod project;
 

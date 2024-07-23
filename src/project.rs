@@ -62,16 +62,13 @@ fn scan_deeper(parent_path: &Path, parent_dirs: Vec<Directory>)
 
 pub fn print_projects(projects: Vec<Project>) {
     for project in projects {
-        match project.repos {
-            Some(repos) => {
-                println!("Project: {}, {:?}, has Git repositories:", project.name, project.path);
-                for repo in repos {
-                    println!("Repository: {}, {:?}", repo.name, repo.path);
-                }
+        if let Some(repos) = project.repos {
+            println!("Project: {}, {:?}, has Git repositories:", project.name, project.path);
+            for repo in repos {
+                println!("Repository: {}, {:?}", repo.name, repo.path);
             }
-            None => {
-                println!("Project found: {}, {:?}", project.name, project.path);
-            }
+        } else {
+            println!("Project found: {}, {:?}", project.name, project.path);
         }
     }
 }
