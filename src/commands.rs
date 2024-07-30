@@ -3,7 +3,7 @@ use std::process::Stdio;
 
 use anyhow::{Context, Result};
 use clap::Subcommand;
-
+use colored::Colorize;
 use crate::project::{print_projects, Project, scan};
 
 #[derive(Subcommand)]
@@ -59,8 +59,8 @@ fn execute_git_cmd(path_string: String, name: &String, git_cmd: &str) -> Result<
         })
     } else {
         let project = projects.iter().find(|p| p.name.eq_ignore_ascii_case(&name))
-            .with_context(|| format!("Project with given name '{}' was not found", &name))?;
-        println!("Project {} found at {:?}", &project.name, &project.path);
+            .with_context(|| format!("Project with given name '{}' was not found", &name.red()))?;
+        println!("Project {} found at {:?}", &project.name.bright_green(), &project.path);
 
         for_project(git_cmd, project);
     }
@@ -80,8 +80,10 @@ fn for_project(arg: &str, project: &Project) {
 
             let cmd_output = cmd.wait_with_output().unwrap();
             match cmd_output.status.code() {
-                Some(0) => println!("[{}]: {}", repo.name, String::from_utf8_lossy(&cmd_output.stdout)),
-                Some(code) => println!("[{}] Error {}", repo.name, code),
+                Some(0) => println!("{} {}: {}", "=>".bright_green(), repo.name.yellow(),
+                                    String::from_utf8_lossy(&cmd_output.stdout)),
+                Some(code) => println!("{} {}: {} {}","=>".red(), repo.name.yellow(),
+                                       "Error".red(), code),
                 None => {}
             }
         });

@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Error};
+use colored::Colorize;
 use crate::directory::{contains_git, Directory, read_dirs, get_name};
 
 pub struct Project {
@@ -63,12 +64,12 @@ fn scan_deeper(parent_path: &Path, parent_dirs: Vec<Directory>)
 pub fn print_projects(projects: Vec<Project>) {
     for project in projects {
         if let Some(repos) = project.repos {
-            println!("Project: {}, {:?}, has Git repositories:", project.name, project.path);
+            println!("\nProject {}, {:?}, with Git repositories:", project.name.bright_green(), project.path);
             for repo in repos {
-                println!("Repository: {}, {:?}", repo.name, repo.path);
+                println!("  - {}", repo.name.yellow());
             }
         } else {
-            println!("Project found: {}, {:?}", project.name, project.path);
+            println!("Project found: {}, {:?}", project.name.bright_green(), project.path);
         }
     }
 }

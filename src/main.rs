@@ -2,7 +2,7 @@ use std::env;
 
 use anyhow::{Context, Error, Result};
 use clap::Parser;
-
+use colored::Colorize;
 use please::commands::{Commands, handle_list, handle_pull, handle_status};
 use please::DEFAULT_DEV_DIR_VAR;
 
@@ -46,12 +46,12 @@ fn resolve_path(override_default: &Option<String>, path_arg: &Option<String>) ->
             match override_default {
                 Some(var) => {
                     let val = env::var(var)
-                        .with_context(|| format!("{} is not defined!", var))?;
+                        .with_context(|| format!("{} is not defined!", var.red()))?;
                     Ok(val)
                 }
                 None => {
                     let dir = env::var(DEFAULT_DEV_DIR_VAR)
-                        .with_context(|| format!("{DEFAULT_DEV_DIR_VAR} is not defined!"))?;
+                        .with_context(|| format!("{} is not defined!", DEFAULT_DEV_DIR_VAR.red()))?;
                     Ok(dir)
                 }
             }
