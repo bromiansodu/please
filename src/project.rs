@@ -9,8 +9,8 @@ pub struct Project {
     pub repos: Option<Vec<Directory>>,
 }
 
-pub fn scan(path_string: &String) -> anyhow::Result<Vec<Project>, Error> {
-    let path = Path::new(path_string);
+pub fn scan(path_string: &PathBuf) -> anyhow::Result<Vec<Project>, Error> {
+    let path = path_string.as_path();
 
     let dirs = read_dirs(path)?;
     if contains_git(&dirs) {

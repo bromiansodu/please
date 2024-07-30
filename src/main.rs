@@ -1,8 +1,10 @@
 use std::env;
+use std::path::PathBuf;
 
 use anyhow::{Context, Error, Result};
 use clap::Parser;
 use colored::Colorize;
+
 use please::commands::{Commands, handle_list, handle_pull, handle_status};
 use please::DEFAULT_DEV_DIR_VAR;
 
@@ -17,7 +19,7 @@ struct Cli {
     /// Instead of using environmental variable, specify a path to a directory with Git repositories
     /// This option has a higher precedence than 'override_default'
     #[arg(short, long)]
-    path: Option<String>,
+    path: Option<PathBuf>,
 
     #[command(subcommand)]
     command: Option<Commands>,
@@ -28,9 +30,9 @@ fn main() -> Result<()> {
     resolve_path(&cli.override_default, &cli.path)
         .and_then(|path| {
             match &cli.command {
-                Some(Commands::List) => handle_list(path),
-                Some(Commands::Status { name }) => handle_status(path, name),
-                Some(Commands::Pull { name }) => handle_pull(path, name),
+                Some(Commands::List) => handle_list(&path),
+                Some(Commands::Status { name }) => handle_status(&path, name),
+                Some(Commands::Pull { name }) => handle_pull(&path, name),
                 None => {
                     println!("No command given. Use with --help or -h to see available commands and options");
                     Ok(())
@@ -39,7 +41,9 @@ fn main() -> Result<()> {
         })
 }
 
-fn resolve_path(override_default: &Option<String>, path_arg: &Option<String>) -> Result<String, Error> {
+fn resolve_path(override_default: &Option<String>, path_arg: &Option<PathBuf>)
+    -> Result<PathBuf, Error> {
+
     match path_arg {
         Some(p) => Ok(p.clone()),
         None => {
@@ -47,12 +51,12 @@ fn resolve_path(override_default: &Option<String>, path_arg: &Option<String>) ->
                 Some(var) => {
                     let val = env::var(var)
                         .with_context(|| format!("{} is not defined!", var.red()))?;
-                    Ok(val)
+                    Ok(PathBuf::from(val))
                 }
                 None => {
-                    let dir = env::var(DEFAULT_DEV_DIR_VAR)
+                    let val = env::var(DEFAULT_DEV_DIR_VAR)
                         .with_context(|| format!("{} is not defined!", DEFAULT_DEV_DIR_VAR.red()))?;
-                    Ok(dir)
+                    Ok(PathBuf::from(val))
                 }
             }
         }

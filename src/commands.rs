@@ -1,9 +1,11 @@
 use std::env;
-use std::process::Stdio;
+use std::path::PathBuf;
+use std::process::{Child, Stdio};
 
 use anyhow::{Context, Result};
 use clap::Subcommand;
 use colored::Colorize;
+use crate::directory::Directory;
 use crate::project::{print_projects, Project, scan};
 
 #[derive(Subcommand)]
@@ -28,8 +30,8 @@ pub enum Commands {
     },
 }
 
-pub fn handle_list(path_string: String) -> Result<()> {
-    println!("Scanning in path {path_string}");
+pub fn handle_list(path: &PathBuf) -> Result<()> {
+    println!("Scanning in path {:?}", path);
     // { //debug
     //     let paths = fs::read_dir(p)
     //         .with_context(|| format!("Failed to read given path: {p}"))?;
@@ -37,21 +39,21 @@ pub fn handle_list(path_string: String) -> Result<()> {
     //         println!("Name: {}", path.unwrap().path().display());
     //     }
     // }
-    let projects = scan(&path_string)?;
+    let projects = scan(&path)?;
     print_projects(projects);
     Ok(())
 }
 
-pub fn handle_status(path_string: String, name: &String) -> Result<()> {
-    execute_git_cmd(path_string, name, "status")
+pub fn handle_status(path: &PathBuf, name: &String) -> Result<()> {
+    execute_git_cmd(path, name, "status")
 }
 
-pub fn handle_pull(path_string: String, name: &String) -> Result<()> {
-    execute_git_cmd(path_string, name, "pull")
+pub fn handle_pull(path: &PathBuf, name: &String) -> Result<()> {
+    execute_git_cmd(path, name, "pull")
 }
 
-fn execute_git_cmd(path_string: String, name: &String, git_cmd: &str) -> Result<()> {
-    let projects = scan(&path_string)?;
+fn execute_git_cmd(path: &PathBuf, name: &String, git_cmd: &str) -> Result<()> {
+    let projects = scan(&path)?;
 
     if "all".eq_ignore_ascii_case(name) {
         projects.iter().for_each(|project| {
@@ -60,14 +62,14 @@ fn execute_git_cmd(path_string: String, name: &String, git_cmd: &str) -> Result<
     } else {
         let project = projects.iter().find(|p| p.name.eq_ignore_ascii_case(&name))
             .with_context(|| format!("Project with given name '{}' was not found", &name.red()))?;
-        println!("Project {} found at {:?}", &project.name.bright_green(), &project.path);
-
         for_project(git_cmd, project);
     }
     Ok(())
 }
 
 fn for_project(arg: &str, project: &Project) {
+    print_project(project);
+
     if let Some(repos) = &project.repos {
         repos.iter().for_each(|repo| {
             let cmd = std::process::Command::new(by_os())
@@ -77,16 +79,23 @@ fn for_project(arg: &str, project: &Project) {
                 .stdout(Stdio::piped())
                 .spawn()
                 .unwrap();
-
-            let cmd_output = cmd.wait_with_output().unwrap();
-            match cmd_output.status.code() {
-                Some(0) => println!("{} {}: {}", "=>".bright_green(), repo.name.yellow(),
-                                    String::from_utf8_lossy(&cmd_output.stdout)),
-                Some(code) => println!("{} {}: {} {}","=>".red(), repo.name.yellow(),
-                                       "Error".red(), code),
-                None => {}
-            }
+            print_cmd_out(repo, cmd);
         });
+    }
+}
+
+fn print_project(project: &Project) {
+    println!("Project {} found at {:?}", &project.name.bright_green(), &project.path);
+}
+
+fn print_cmd_out(repo: &Directory, cmd: Child) {
+    let cmd_output = cmd.wait_with_output().unwrap();
+    match cmd_output.status.code() {
+        Some(0) => println!("{} {}: {}", "=>".bright_green(), repo.name.yellow(),
+                            String::from_utf8_lossy(&cmd_output.stdout)),
+        Some(code) => println!("{} {}: {} {}", "=>".red(), repo.name.yellow(),
+                               "Error".red(), code),
+        None => {}
     }
 }
 
@@ -107,11 +116,11 @@ mod tests {
     fn test_execute_git_cmd_project_not_found() {
         let temp_dir = tempdir().unwrap();
         let _temp_sub_dir = tempdir_in(&temp_dir.path()).unwrap();
-        let path_string = temp_dir.path().to_str().unwrap().to_string();
+        let path = temp_dir.path().to_path_buf();
         let name = "nonexistent".to_string();
         let git_cmd = "status";
 
-        let result = execute_git_cmd(path_string.clone(), &name, git_cmd);
+        let result = execute_git_cmd(&path, &name, git_cmd);
         assert!(result.is_err());
     }
 }
