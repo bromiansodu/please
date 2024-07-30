@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Error};
 use colored::Colorize;
 use crate::directory::{contains_git, Directory, read_dirs, get_name};
+use crate::ERROR_WRITER;
 
 pub struct Project {
     pub name: String,
@@ -61,15 +62,18 @@ fn scan_deeper(parent_path: &Path, parent_dirs: Vec<Directory>)
     Ok(projects)
 }
 
-pub fn print_projects(projects: Vec<Project>) {
+pub fn print_projects(projects: Vec<Project>, mut writer: impl std::io::Write) {
     for project in projects {
         if let Some(repos) = project.repos {
-            println!("\nProject {}, {:?}, with Git repositories:", project.name.bright_green(), project.path);
+            writeln!(writer, "\nProject {}, {:?}, with Git repositories:",
+                     project.name.bright_green(), project.path).expect(ERROR_WRITER);
             for repo in repos {
-                println!("  - {}", repo.name.yellow());
+                writeln!(writer, "  - {}",
+                         repo.name.yellow()).expect(ERROR_WRITER);
             }
         } else {
-            println!("Project found: {}, {:?}", project.name.bright_green(), project.path);
+            writeln!(writer, "\nProject found: {}, {:?}",
+                     project.name.bright_green(), project.path).expect(ERROR_WRITER);
         }
     }
 }
@@ -77,6 +81,82 @@ pub fn print_projects(projects: Vec<Project>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_print_all_projects() {
+        let projects = vec![
+            make_project_with_two_repos(), make_project_with_one_repo(),
+        ];
+
+        let mut result = Vec::new();
+        print_projects(projects, &mut result);
+
+        assert_eq!(result, format!("\nProject {}, \"{}\", with Git repositories:\n  - {}\n  - {}\n\
+        \nProject {}, \"{}\", with Git repositories:\n  - {}\n",
+                                   "Project1".bright_green(), "/some/path", "Repo1".yellow(), "Repo2".yellow(),
+                                   "Project2".bright_green(), "/some/different/path", "DifferentRepo".yellow())
+            .as_bytes());
+    }
+
+    #[test]
+    fn should_print_one_project() {
+        let projects = vec![
+            make_project_with_two_repos(),
+        ];
+
+        let mut result = Vec::new();
+        print_projects(projects, &mut result);
+
+        assert_eq!(result, format!("\nProject {}, \"{}\", with Git repositories:\n  - {}\n  - {}\n",
+                                   "Project1".bright_green(), "/some/path", "Repo1".yellow(), "Repo2".yellow())
+            .as_bytes());
+    }
+
+    #[test]
+    fn should_print_project_without_repos() {
+        let projects = vec![
+            make_project_without_repos(),
+        ];
+
+        let mut result = Vec::new();
+        print_projects(projects, &mut result);
+
+        assert_eq!(result, format!("\nProject found: {}, \"{}\"\n",
+                                   "Project".bright_green(), "/some/path").as_bytes());
+    }
+
+    fn make_project_with_two_repos() -> Project {
+        Project {
+            name: "Project1".to_string(),
+            path: PathBuf::from("/some/path"),
+            repos: Some(vec![Directory {
+                name: "Repo1".to_string(),
+                path: PathBuf::from("/some/path/repo1"),
+            }, Directory {
+                name: "Repo2".to_string(),
+                path: PathBuf::from("/some/path/repo2"),
+            }]),
+        }
+    }
+
+    fn make_project_with_one_repo() -> Project {
+        Project {
+            name: "Project2".to_string(),
+            path: PathBuf::from("/some/different/path"),
+            repos: Some(vec![Directory {
+                name: "DifferentRepo".to_string(),
+                path: PathBuf::from("/some/different/path/repo"),
+            }]),
+        }
+    }
+
+    fn make_project_without_repos() -> Project {
+        Project {
+            name: "Project".to_string(),
+            path: PathBuf::from("/some/path"),
+            repos: None,
+        }
+    }
 
     #[test]
     fn test_parent_lvl_project() {

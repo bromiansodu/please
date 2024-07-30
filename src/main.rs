@@ -30,7 +30,7 @@ fn main() -> Result<()> {
     resolve_path(&cli.override_default, &cli.path)
         .and_then(|path| {
             match &cli.command {
-                Some(Commands::List) => handle_list(&path),
+                Some(Commands::List) => handle_list(&path, &mut std::io::stdout()),
                 Some(Commands::Status { name }) => handle_status(&path, name),
                 Some(Commands::Pull { name }) => handle_pull(&path, name),
                 None => {
