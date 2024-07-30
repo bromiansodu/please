@@ -72,3 +72,20 @@ pub fn print_projects(projects: Vec<Project>) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parent_lvl_project() {
+        let path = Path::new("/some/path/some-name");
+        let result = parent_lvl_project(path);
+        assert_eq!(1, result.len());
+
+        let res_project = result.into_iter().nth(0).unwrap();
+        assert_eq!("some-name", res_project.name);
+        assert_eq!(path, res_project.path);
+        assert!(res_project.repos.is_none());
+    }
+}

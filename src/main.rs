@@ -3,7 +3,7 @@ use std::env;
 use anyhow::{Context, Error, Result};
 use clap::Parser;
 
-use please::commands::{Commands, handle_list, handle_status};
+use please::commands::{Commands, handle_list, handle_pull, handle_status};
 use please::DEFAULT_DEV_DIR_VAR;
 
 #[derive(Parser)]
@@ -30,6 +30,7 @@ fn main() -> Result<()> {
             match &cli.command {
                 Some(Commands::List) => handle_list(path),
                 Some(Commands::Status { name }) => handle_status(path, name),
+                Some(Commands::Pull { name }) => handle_pull(path, name),
                 None => {
                     println!("No command given. Use with --help or -h to see available commands and options");
                     Ok(())
