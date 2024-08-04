@@ -2,6 +2,8 @@
 name = "please"
 version = "0.1.0"
 authors = [ "Paweł Lewandowski <pl.lewandowski@proton.me>" ]
+license = "MIT"
+license-file = "LICENSE"
 edition = "2021"
 
 [dependencies]
