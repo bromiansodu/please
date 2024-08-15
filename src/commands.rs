@@ -1,5 +1,5 @@
 use std::io::{stdin, stdout, Write};
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::Child;
 
 use anyhow::{Context, Result};
@@ -37,23 +37,23 @@ pub enum Commands {
     Clean,
 }
 
-pub fn handle_list(path: &PathBuf, writer: impl Write) -> Result<()> {
+pub fn handle_list(path: &Path, writer: impl Write) -> Result<()> {
     println!("Scanning in path {:?}", path);
-    let projects = scan(&path)?;
+    let projects = scan(path)?;
     print_projects(projects, writer);
     Ok(())
 }
 
-pub fn handle_status(path: &PathBuf, name: &String) -> Result<()> {
+pub fn handle_status(path: &Path, name: &String) -> Result<()> {
     execute_git_cmd(path, name, GIT_STATUS)
 }
 
-pub fn handle_pull(path: &PathBuf, name: &String) -> Result<()> {
+pub fn handle_pull(path: &Path, name: &String) -> Result<()> {
     execute_git_cmd(path, name, GIT_PULL)
 }
 
-fn execute_git_cmd(path: &PathBuf, name: &String, git_cmd: &str) -> Result<()> {
-    let projects = scan(&path)?;
+fn execute_git_cmd(path: &Path, name: &String, git_cmd: &str) -> Result<()> {
+    let projects = scan(path)?;
 
     if "all".eq_ignore_ascii_case(name) {
         projects
@@ -62,7 +62,7 @@ fn execute_git_cmd(path: &PathBuf, name: &String, git_cmd: &str) -> Result<()> {
     } else {
         let project = projects
             .iter()
-            .find(|p| p.name.eq_ignore_ascii_case(&name))
+            .find(|p| p.name.eq_ignore_ascii_case(name))
             .with_context(|| format!("Project with given name '{}' was not found", &name.red()))?;
         for_project(git_cmd, project, &mut stdout());
     }
@@ -156,7 +156,7 @@ fn get_user_input() -> String {
     input
 }
 
-fn user_confirmed(input: &String) -> bool {
+fn user_confirmed(input: &str) -> bool {
     input.trim().eq_ignore_ascii_case("y") ||
         input.trim().eq_ignore_ascii_case("yes")
 }
@@ -176,6 +176,7 @@ fn determine_target(branches: Vec<String>) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
     use tempfile::{tempdir, tempdir_in};
 
     use super::*;

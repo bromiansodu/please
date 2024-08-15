@@ -1,8 +1,8 @@
-use std::path::{Path, PathBuf};
+use crate::directory::{contains_git, get_name, read_dirs, Directory};
+use crate::ERROR_WRITER;
 use anyhow::{anyhow, Error};
 use colored::Colorize;
-use crate::directory::{contains_git, Directory, read_dirs, get_name};
-use crate::ERROR_WRITER;
+use std::path::{Path, PathBuf};
 
 pub struct Project {
     pub name: String,
@@ -10,9 +10,7 @@ pub struct Project {
     pub repos: Option<Vec<Directory>>,
 }
 
-pub fn scan(path_string: &PathBuf) -> anyhow::Result<Vec<Project>, Error> {
-    let path = path_string.as_path();
-
+pub fn scan(path: &Path) -> anyhow::Result<Vec<Project>, Error> {
     let dirs = read_dirs(path)?;
     if contains_git(&dirs) {
         return Ok(parent_lvl_project(path));
@@ -26,17 +24,17 @@ pub fn scan(path_string: &PathBuf) -> anyhow::Result<Vec<Project>, Error> {
 }
 
 fn parent_lvl_project(path: &Path) -> Vec<Project> {
-    let mut project = Vec::new();
-    project.push(Project {
+    vec![Project {
         name: get_name(path),
         path: path.to_path_buf(),
         repos: None,
-    });
-    project
+    }]
 }
 
-fn scan_deeper(parent_path: &Path, parent_dirs: Vec<Directory>)
-               -> anyhow::Result<Vec<Project>, Error> {
+fn scan_deeper(
+    parent_path: &Path,
+    parent_dirs: Vec<Directory>,
+) -> anyhow::Result<Vec<Project>, Error> {
     let mut projects = Vec::new();
     let mut repos = Vec::new();
 
@@ -65,15 +63,20 @@ fn scan_deeper(parent_path: &Path, parent_dirs: Vec<Directory>)
 pub fn print_projects(projects: Vec<Project>, mut writer: impl std::io::Write) {
     for project in projects {
         if let Some(repos) = project.repos {
-            writeln!(writer, "\nProject {}, {:?}, with Git repositories:",
-                     project.name.bright_green(), project.path).expect(ERROR_WRITER);
+            writeln!(writer,
+                "\nProject {}, {:?}, with Git repositories:",
+                project.name.bright_green(),
+                project.path
+            ).expect(ERROR_WRITER);
             for repo in repos {
-                writeln!(writer, "  - {}",
-                         repo.name.yellow()).expect(ERROR_WRITER);
+                writeln!(writer, "  - {}", repo.name.yellow()).expect(ERROR_WRITER);
             }
         } else {
-            writeln!(writer, "\nProject found: {}, {:?}",
-                     project.name.bright_green(), project.path).expect(ERROR_WRITER);
+            writeln!(writer,
+                "\nProject found: {}, {:?}",
+                project.name.bright_green(),
+                project.path
+            ).expect(ERROR_WRITER);
         }
     }
 }
@@ -84,58 +87,80 @@ mod tests {
 
     #[test]
     fn should_print_all_projects() {
-        let projects = vec![
-            make_project_with_two_repos(), make_project_with_one_repo(),
-        ];
+        let projects = vec![make_project_with_two_repos(), make_project_with_one_repo()];
 
         let mut result = Vec::new();
         print_projects(projects, &mut result);
 
-        assert_eq!(result, format!("\nProject {}, \"{}\", with Git repositories:\n  - {}\n  - {}\n\
+        assert_eq!(
+            result,
+            format!(
+                "\nProject {}, \"{}\", with Git repositories:\n  - {}\n  - {}\n\
         \nProject {}, \"{}\", with Git repositories:\n  - {}\n",
-                                   "Project1".bright_green(), "/some/path", "Repo1".yellow(), "Repo2".yellow(),
-                                   "Project2".bright_green(), "/some/different/path", "DifferentRepo".yellow())
-            .as_bytes());
+                "Project1".bright_green(),
+                "/some/path",
+                "Repo1".yellow(),
+                "Repo2".yellow(),
+                "Project2".bright_green(),
+                "/some/different/path",
+                "DifferentRepo".yellow()
+            )
+                .as_bytes()
+        );
     }
 
     #[test]
     fn should_print_one_project() {
-        let projects = vec![
-            make_project_with_two_repos(),
-        ];
+        let projects = vec![make_project_with_two_repos()];
 
         let mut result = Vec::new();
         print_projects(projects, &mut result);
 
-        assert_eq!(result, format!("\nProject {}, \"{}\", with Git repositories:\n  - {}\n  - {}\n",
-                                   "Project1".bright_green(), "/some/path", "Repo1".yellow(), "Repo2".yellow())
-            .as_bytes());
+        assert_eq!(
+            result,
+            format!(
+                "\nProject {}, \"{}\", with Git repositories:\n  - {}\n  - {}\n",
+                "Project1".bright_green(),
+                "/some/path",
+                "Repo1".yellow(),
+                "Repo2".yellow()
+            )
+                .as_bytes()
+        );
     }
 
     #[test]
     fn should_print_project_without_repos() {
-        let projects = vec![
-            make_project_without_repos(),
-        ];
+        let projects = vec![make_project_without_repos()];
 
         let mut result = Vec::new();
         print_projects(projects, &mut result);
 
-        assert_eq!(result, format!("\nProject found: {}, \"{}\"\n",
-                                   "Project".bright_green(), "/some/path").as_bytes());
+        assert_eq!(
+            result,
+            format!(
+                "\nProject found: {}, \"{}\"\n",
+                "Project".bright_green(),
+                "/some/path"
+            )
+                .as_bytes()
+        );
     }
 
     fn make_project_with_two_repos() -> Project {
         Project {
             name: "Project1".to_string(),
             path: PathBuf::from("/some/path"),
-            repos: Some(vec![Directory {
-                name: "Repo1".to_string(),
-                path: PathBuf::from("/some/path/repo1"),
-            }, Directory {
-                name: "Repo2".to_string(),
-                path: PathBuf::from("/some/path/repo2"),
-            }]),
+            repos: Some(vec![
+                Directory {
+                    name: "Repo1".to_string(),
+                    path: PathBuf::from("/some/path/repo1"),
+                },
+                Directory {
+                    name: "Repo2".to_string(),
+                    path: PathBuf::from("/some/path/repo2"),
+                },
+            ]),
         }
     }
 

@@ -1,8 +1,8 @@
-use std::{fs, io};
 use std::path::{Path, PathBuf};
+use std::{fs, io};
 
-pub const GIT_DIR: &'static str = ".git";
-pub const NAME_UNAVAILABLE: &'static str = "Name_Unavailable";
+pub const GIT_DIR: &str = ".git";
+pub const NAME_UNAVAILABLE: &str = "Name_Unavailable";
 
 pub struct Directory {
     pub name: String,
@@ -21,7 +21,6 @@ impl Directory {
 pub fn read_dirs(path: &Path) -> anyhow::Result<Vec<Directory>, io::Error> {
     let dirs = fs::read_dir(path)?
         .filter(|r| r.is_ok())
-        .into_iter()
         .map(|r| r.unwrap().path())
         .filter(|r| r.is_dir())
         .map(Directory::from)
@@ -29,15 +28,16 @@ pub fn read_dirs(path: &Path) -> anyhow::Result<Vec<Directory>, io::Error> {
     Ok(dirs)
 }
 
-pub fn contains_git(dirs: &Vec<Directory>) -> bool {
-    dirs.iter()
-        .any(|x| { GIT_DIR.eq(&x.name) })
+pub fn contains_git(dirs: &[Directory]) -> bool {
+    dirs.iter().any(|x| GIT_DIR.eq(&x.name))
 }
 
 pub fn get_name(path: &Path) -> String {
     path.file_name()
-        .unwrap_or(NAME_UNAVAILABLE.to_string().as_ref()).to_str()
-        .unwrap_or(NAME_UNAVAILABLE).to_string()
+        .unwrap_or(NAME_UNAVAILABLE.to_string().as_ref())
+        .to_str()
+        .unwrap_or(NAME_UNAVAILABLE)
+        .to_string()
 }
 
 #[cfg(test)]
@@ -58,12 +58,13 @@ mod tests {
     #[test]
     fn test_contains_git() {
         let dirs = vec![Directory {
-            name: "some-dir".to_string(),
-            path: PathBuf::from("/some/path")
-        }, Directory{
-            name: ".git".to_string(),
-            path: PathBuf::from("/some/.git")
-        }];
+                name: "some-dir".to_string(),
+                path: PathBuf::from("/some/path"),
+            }, Directory {
+                name: ".git".to_string(),
+                path: PathBuf::from("/some/.git"),
+            },
+        ];
 
         assert!(contains_git(&dirs));
     }
@@ -72,7 +73,7 @@ mod tests {
     fn contains_git_false() {
         let dirs = vec![Directory {
             name: "some-dir".to_string(),
-            path: PathBuf::from("/some/path")
+            path: PathBuf::from("/some/path"),
         }];
 
         assert!(!contains_git(&dirs));
@@ -86,8 +87,10 @@ mod tests {
         let result = read_dirs(temp_dir.path()).unwrap();
 
         assert!(result.len().eq(&1));
-        assert_eq!(temp_sub_dir.path().file_name().unwrap().to_str().unwrap(),
-                   result.into_iter().nth(0).unwrap().name)
+        assert_eq!(
+            temp_sub_dir.path().file_name().unwrap().to_str().unwrap(),
+            result.into_iter().nth(0).unwrap().name
+        )
     }
 
     #[test]

@@ -5,12 +5,12 @@ use std::process::{Child, Stdio};
 use anyhow::{anyhow, Error};
 use colored::Colorize;
 
-const GIT_EXEC: &'static str = "git";
-const GIT_EXEC_WINDOWS: &'static str = "git.exe";
-pub const GIT_PULL: &'static str = "pull";
-pub const GIT_STATUS: &'static str = "status";
-pub const GIT_CHECKOUT: &'static str = "checkout";
-pub const GIT_BRANCH: &'static str = "branch";
+const GIT_EXEC: &str = "git";
+const GIT_EXEC_WINDOWS: &str = "git.exe";
+pub const GIT_PULL: &str = "pull";
+pub const GIT_STATUS: &str = "status";
+pub const GIT_CHECKOUT: &str = "checkout";
+pub const GIT_BRANCH: &str = "branch";
 
 pub fn checkout(target: String) -> anyhow::Result<()> {
     let cmd_output = two_args_cmd(GIT_CHECKOUT, &target).wait_with_output().unwrap();
@@ -70,7 +70,6 @@ pub fn get_branches() -> anyhow::Result<Vec<String>, Error> {
             let branches = sanitized
                 .trim_end()
                 .split("\n")
-                .into_iter()
                 .map(|s| s.trim_start())
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>();
@@ -101,7 +100,7 @@ fn two_args_cmd(arg1: &str, arg2: &str) -> Child {
 
 fn three_args_cmd(arg1: &str, arg2: &str, arg3: &str) -> Child {
     std::process::Command::new(by_os())
-        .arg(arg1).arg(arg2).arg(&arg3)
+        .arg(arg1).arg(arg2).arg(arg3)
         .stdin(Stdio::inherit())
         .stdout(Stdio::piped())
         .spawn()
