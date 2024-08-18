@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
-use std::{fs, io};
+use std::fs;
+use anyhow::Context;
 
 pub const GIT_DIR: &str = ".git";
 pub const NAME_UNAVAILABLE: &str = "Name_Unavailable";
@@ -9,17 +10,18 @@ pub struct Directory {
     pub path: PathBuf,
 }
 
-impl Directory {
-    pub fn from(p: PathBuf) -> Directory {
-        Directory {
-            name: get_name(&p),
-            path: p,
+impl From<PathBuf> for Directory {
+    fn from(value: PathBuf) -> Self {
+        Self {
+            name: get_name(&value),
+            path: value,
         }
     }
 }
 
-pub fn read_dirs(path: &Path) -> anyhow::Result<Vec<Directory>, io::Error> {
-    let dirs = fs::read_dir(path)?
+pub fn read_dirs(path: &Path) -> anyhow::Result<Vec<Directory>> {
+    let dirs = fs::read_dir(path)
+        .with_context(|| format!("Failed to read directory at {:?}", path))?
         .filter(|r| r.is_ok())
         .map(|r| r.unwrap().path())
         .filter(|r| r.is_dir())

@@ -1,11 +1,11 @@
 use std::env;
 use std::path::PathBuf;
 
-use anyhow::{Context, Error, Result};
+use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
 
-use please::commands::{handle_clean, handle_list, handle_pull, handle_status, Commands};
+use please::commands::{Commands, handle_clean, handle_list, handle_pull, handle_status};
 use please::DEFAULT_DEV_DIR_VAR;
 
 #[derive(Parser)]
@@ -41,10 +41,7 @@ fn main() -> Result<()> {
     })
 }
 
-fn resolve_path(
-    override_default: &Option<String>,
-    path_arg: &Option<PathBuf>,
-) -> Result<PathBuf, Error> {
+fn resolve_path(override_default: &Option<String>, path_arg: &Option<PathBuf>) -> Result<PathBuf> {
     match path_arg {
         Some(p) => Ok(p.clone()),
         None => match override_default {

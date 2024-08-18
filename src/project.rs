@@ -1,8 +1,10 @@
-use crate::directory::{contains_git, get_name, read_dirs, Directory};
-use crate::ERROR_WRITER;
-use anyhow::{anyhow, Error};
-use colored::Colorize;
 use std::path::{Path, PathBuf};
+
+use anyhow::{anyhow, Result};
+use colored::Colorize;
+
+use crate::ERROR_WRITER;
+use crate::directory::{contains_git, Directory, get_name, read_dirs};
 
 pub struct Project {
     pub name: String,
@@ -10,7 +12,7 @@ pub struct Project {
     pub repos: Option<Vec<Directory>>,
 }
 
-pub fn scan(path: &Path) -> anyhow::Result<Vec<Project>, Error> {
+pub fn scan(path: &Path) -> Result<Vec<Project>> {
     let dirs = read_dirs(path)?;
     if contains_git(&dirs) {
         return Ok(parent_lvl_project(path));
@@ -31,10 +33,7 @@ fn parent_lvl_project(path: &Path) -> Vec<Project> {
     }]
 }
 
-fn scan_deeper(
-    parent_path: &Path,
-    parent_dirs: Vec<Directory>,
-) -> anyhow::Result<Vec<Project>, Error> {
+fn scan_deeper(parent_path: &Path, parent_dirs: Vec<Directory>) -> Result<Vec<Project>> {
     let mut projects = Vec::new();
     let mut repos = Vec::new();
 

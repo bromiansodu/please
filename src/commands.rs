@@ -39,7 +39,7 @@ pub enum Commands {
 
 pub fn handle_list(path: &Path, writer: impl Write) -> Result<()> {
     println!("Scanning in path {:?}", path);
-    let projects = scan(path)?;
+    let projects = scan(path).with_context(|| "Scanning for projects failed")?;
     print_projects(projects, writer);
     Ok(())
 }
@@ -53,7 +53,7 @@ pub fn handle_pull(path: &Path, name: &String) -> Result<()> {
 }
 
 fn execute_git_cmd(path: &Path, name: &String, git_cmd: &str) -> Result<()> {
-    let projects = scan(path)?;
+    let projects = scan(path).with_context(|| "Scanning for projects failed")?;
 
     if "all".eq_ignore_ascii_case(name) {
         projects
@@ -132,9 +132,12 @@ fn clean(current: String, branches: Vec<String>, mut writer: impl Write) -> Resu
                     .expect(ERROR_WRITER);
 
                 if user_confirmed(&get_user_input()) {
-                    git::checkout(target)
-                        .and_then(|_| { git::pull() })
-                        .and_then(|_| { git::delete(current) })
+                    git::checkout(target).with_context(|| "Failed to execute `git checkout`")
+                        .and_then(|_| {
+                            git::pull().with_context(|| "Failed to execute `git pull`")
+                        })
+                        .and_then(|_| { git::delete(current)
+                                .with_context(|| "Failed to execute `git branch -d`") })
                 } else {
                     writeln!(writer, "Aborting").expect(ERROR_WRITER);
                     Ok(())
@@ -177,6 +180,7 @@ fn determine_target(branches: Vec<String>) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
+
     use tempfile::{tempdir, tempdir_in};
 
     use super::*;

@@ -1,8 +1,9 @@
 use std::env::consts::OS;
+use std::fmt::{Display, Formatter};
 use std::path::Path;
 use std::process::{Child, Stdio};
 
-use anyhow::{anyhow, Error};
+use anyhow::Result;
 use colored::Colorize;
 
 const GIT_EXEC: &str = "git";
@@ -12,17 +13,62 @@ pub const GIT_STATUS: &str = "status";
 pub const GIT_CHECKOUT: &str = "checkout";
 pub const GIT_BRANCH: &str = "branch";
 
-pub fn checkout(target: String) -> anyhow::Result<()> {
+#[non_exhaustive]
+#[derive(Debug)]
+pub enum GitError {
+    CheckoutCode(String, i32),
+    Checkout(String),
+    PullCode(i32),
+    Pull,
+    DeleteCode(String, i32),
+    Delete(String),
+    CurrentBranchCode(i32),
+    CurrentBranch,
+    ReadBranchesCode(i32),
+    ReadBranches
+}
+
+impl Display for GitError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        use GitError::*;
+        match self {
+            CheckoutCode(target, code) =>
+                write!(f, "Unable to checkout to {} code[{}]", target, code),
+            Checkout(target) =>
+                write!(f, "Git checkout to {} failed with an unexpected error", target),
+            PullCode(code) =>
+                write!(f, "Git pull errored. Code[{}]", code),
+            Pull =>
+                write!(f, "Git pull failed with an unexpected error"),
+            DeleteCode(branch, code) =>
+                write!(f, "Deleting branch {} failed. Code[{}]", branch, code),
+            Delete(branch) =>
+                write!(f, "Deleting branch {} failed", branch),
+            CurrentBranchCode(code) =>
+                write!(f, "Unable to read current branch. Code[{}]", code),
+            CurrentBranch =>
+                write!(f, "Unable to read current branch"),
+            ReadBranchesCode(code) =>
+                write!(f, "Unable to read branches. Code[{}]", code),
+            ReadBranches =>
+                write!(f, "Unable to read branches")
+        }
+    }
+}
+
+impl std::error::Error for GitError {}
+
+pub fn checkout(target: String) -> Result<(), GitError> {
     let cmd_output = two_args_cmd(GIT_CHECKOUT, &target).wait_with_output().unwrap();
 
     match cmd_output.status.code() {
         Some(0) => Ok(()),
-        Some(code) => Err(anyhow!("Unable to checkout to {} code[{}]", target, code)),
-        None => Err(anyhow!("Git checkout to {} errored", target))
+        Some(code) => Err(GitError::CheckoutCode(target, code)),
+        None => Err(GitError::Checkout(target))
     }
 }
 
-pub fn pull() -> anyhow::Result<()> {
+pub fn pull() -> Result<(), GitError> {
     let cmd_output = one_arg_cmd(GIT_PULL).wait_with_output().unwrap();
 
     match cmd_output.status.code() {
@@ -30,12 +76,12 @@ pub fn pull() -> anyhow::Result<()> {
             println!("Pulled the latest changes");
             Ok(())
         },
-        Some(code) => Err(anyhow!("Git pull errored. Code[{}]", code)),
-        None => Err(anyhow!("Unable to pull"))
+        Some(code) => Err(GitError::PullCode(code)),
+        None => Err(GitError::Pull)
     }
 }
 
-pub fn delete(branch: String) -> anyhow::Result<()> {
+pub fn delete(branch: String) -> Result<(), GitError> {
     let cmd_output = three_args_cmd(GIT_BRANCH, "-d", &branch)
         .wait_with_output().unwrap();
 
@@ -44,23 +90,23 @@ pub fn delete(branch: String) -> anyhow::Result<()> {
             println!("{} has been deleted", branch.yellow());
             Ok(())
         },
-        Some(code) => Err(anyhow!("Deleting branch {} failed. Code[{}]", branch, code)),
-        None => Err(anyhow!("Deleting branch {} failed", branch))
+        Some(code) => Err(GitError::DeleteCode(branch, code)),
+        None => Err(GitError::Delete(branch))
     }
 }
 
-pub fn get_curr_branch() -> anyhow::Result<String, Error> {
+pub fn get_curr_branch() -> Result<String, GitError> {
     let cmd_output = two_args_cmd(GIT_BRANCH, "--show-current")
         .wait_with_output().unwrap();
 
     match cmd_output.status.code() {
         Some(0) => Ok(String::from_utf8_lossy(&cmd_output.stdout).trim().to_string()),
-        Some(code) => Err(anyhow!("Unable to read current branch. Code[{}]", code)),
-        None => Err(anyhow!("Unable to read current branch"))
+        Some(code) => Err(GitError::CurrentBranchCode(code)),
+        None => Err(GitError::CurrentBranch)
     }
 }
 
-pub fn get_branches() -> anyhow::Result<Vec<String>, Error> {
+pub fn get_branches() -> Result<Vec<String>, GitError> {
     let cmd_output = one_arg_cmd(GIT_BRANCH).wait_with_output().unwrap();
     match cmd_output.status.code() {
         Some(0) => {
@@ -75,8 +121,8 @@ pub fn get_branches() -> anyhow::Result<Vec<String>, Error> {
                 .collect::<Vec<String>>();
             Ok(branches)
         }
-        Some(code) => Err(anyhow!("Unable to read branches. Code[{}]", code)),
-        None => Err(anyhow!("Unable to read branches"))
+        Some(code) => Err(GitError::ReadBranchesCode(code)),
+        None => Err(GitError::ReadBranches)
     }
 }
 
